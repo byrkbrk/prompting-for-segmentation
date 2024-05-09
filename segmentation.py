@@ -17,7 +17,7 @@ class PromptSAM(object):
 
     def segment(self, image_path, point_prompts, label_prompts):
         image = self.resize_image(self.read_image(image_path), 1024)
-        self.show_points_on_image(image, point_prompts, label_prompts)
+        self.plot_prompt_points_on_image(image, point_prompts, label_prompts)
         
     
     def annotate_inference(self, inference, area_threshold=0):
@@ -75,27 +75,31 @@ class PromptSAM(object):
     
     def resize_image(self, image, size):
         """Returns resized image"""
-        return transforms.Compose([transforms.ToTensor(), transforms.Resize(size)])(image)
+        return transforms.Compose([transforms.Resize(size), transforms.ToTensor()])(image)
     
-    def show_points(self, coords, labels, ax, marker_size=375):
-        pos_points = coords[labels==1]
-        neg_points = coords[labels==0]
-        ax.scatter(pos_points[:, 0], pos_points[:, 1], color='green', marker='*', s=marker_size, edgecolor='white', linewidth=1.25)
-        ax.scatter(neg_points[:, 0], neg_points[:, 1], color='red', marker='*', s=marker_size, edgecolor='white', linewidth=1.25)
-
-    def show_points_on_image(self, raw_image, input_points, input_labels=None):
-        fig, ax = plt.subplots(figsize=(10, 10))
-        ax.imshow(raw_image.permute(1, 2, 0).numpy())
-        input_points = np.array(input_points)
-        if input_labels is None:
-            labels = np.ones_like(input_points[:, 0])
-        else:
-            labels = np.array(input_labels)
-        self.show_points(input_points, labels, ax)
-        ax.axis('on')
-        fig.savefig(os.path.join(self.module_dir, "prompts_on_image.png"))
+    def plot_prompt_points_on_image(self, image, points, labels=None, fpath=None):
+        """Plots prompt points onto given image and saves"""
+        if labels is None:
+            labels = [1]*len(points)
         
-    
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.imshow(image.permute(1, 2, 0).numpy())
+        self._scatter_labeled_points(points, labels, ax)
+        ax.axis('on')
+        if fpath is None:
+            fpath = os.path.join(self.module_dir, "prompts_on_image.png")
+        fig.savefig(fpath)
+        
+    def _scatter_labeled_points(self, points, labels, ax, marker_size=375):
+        """Plots labeled points into ax object"""
+        points = torch.tensor(points)
+        labels = torch.tensor(labels)
+        pos_points = points[labels==1]
+        neg_points = points[labels==0]
+        ax.scatter(pos_points[:, 0], pos_points[:, 1], color='green', marker='*', 
+                   s=marker_size, edgecolor='white', linewidth=1.25)
+        ax.scatter(neg_points[:, 0], neg_points[:, 1], color='red', marker='*', 
+                   s=marker_size, edgecolor='white', linewidth=1.25)
 
 if __name__ == "__main__":
     prompt_sam = PromptSAM()
