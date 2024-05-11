@@ -16,8 +16,14 @@ class PromptSAM(object):
         self.model = self.instantiate_model(self.module_dir, self.checkpoint_name)
 
     def segment(self, image_path, point_prompts, label_prompts):
-        image = self.resize_image(self.read_image(image_path), 1024)
+        image = self.resize_image(self.read_image(image_path), (1024, 1024))
         self.plot_prompt_points_on_image(image, point_prompts, label_prompts)
+        aggregated_mask = self.aggregate_masks(self.annotate_inference(self.model(image[None], 
+                                                                                  device=self.device, 
+                                                                                  retina_masks=True)[0]), 
+                                               point_prompts,
+                                               label_prompts)
+        self.paste_mask_on_image(image, aggregated_mask)
         
     
     def annotate_inference(self, inference, area_threshold=0):
@@ -91,18 +97,45 @@ class PromptSAM(object):
         fig.savefig(fpath)
         
     def _scatter_labeled_points(self, points, labels, ax, marker_size=375):
-        """Plots labeled points into ax object"""
+        """Plots labeled points into ax object
+        Args:
+            points (list): List of 2D points in h, w form
+            labels (list): List of labels
+            ax: Axes object of pyplot
+            marker_size (int): Size of the marker
+        """
         points = torch.tensor(points)
         labels = torch.tensor(labels)
         pos_points = points[labels==1]
         neg_points = points[labels==0]
-        ax.scatter(pos_points[:, 0], pos_points[:, 1], color='green', marker='*', 
+        ax.scatter(pos_points[:, 1], pos_points[:, 0], color='green', marker='*', 
                    s=marker_size, edgecolor='white', linewidth=1.25)
-        ax.scatter(neg_points[:, 0], neg_points[:, 1], color='red', marker='*', 
+        ax.scatter(neg_points[:, 1], neg_points[:, 0], color='red', marker='*', 
                    s=marker_size, edgecolor='white', linewidth=1.25)
+        
+    def paste_mask_on_image(self, image, mask, filepath=None):
+        """Adds masks on given image and saves
+        Args:
+            image (torch.Tensor): Image that be masked
+            mask (torch.Tensor): Mask that be applied to image
+            filepath (str): Path of the image that be saved
+        """
+        image = torch.cat([image, torch.ones((1, *image.shape[1:]))])
+        image_mask = torch.zeros_like(image)
+        image_mask[:,mask] = torch.cat([torch.rand(3), torch.Tensor([0.7])])[:, None]
+        
+        if filepath is None:
+            filepath = os.path.join(self.module_dir, "masked_image.png")
+        Image.alpha_composite(
+            transforms.functional.to_pil_image(image),
+            transforms.functional.to_pil_image(image_mask)
+        ).save(filepath)
+
+
+
 
 if __name__ == "__main__":
     prompt_sam = PromptSAM()
-    point_prompts = [[500, 500], [1000, 800]]
-    point_labels = [1, 0]
+    point_prompts = [[500, 400], [500, 700], [700, 400]]
+    point_labels = [0 ,0, 1]
     prompt_sam.segment("dogs.jpg", point_prompts, point_labels)
