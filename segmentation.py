@@ -14,9 +14,11 @@ class PromptSAM(object):
         self.checkpoint_name = checkpoint_name
         self.device = self.initialize_device(device)
         self.model = self.instantiate_model(self.module_dir, self.checkpoint_name)
+        self.create_dirs(self.module_dir)
 
-    def segment(self, image_path, point_prompts, label_prompts):
-        image = self.resize_image(self.read_image(image_path), (1024, 1024))
+    def segment(self, image_name, point_prompts, label_prompts, image_size):
+        image = self.resize_image(self.read_image(os.path.join(self.module_dir, "segmentation-images", image_name)), image_size)
+        print(image.shape)
         self.plot_prompt_points_on_image(image, point_prompts, label_prompts)
         aggregated_mask = self.aggregate_masks(self.annotate_inference(self.model(image[None], 
                                                                                   device=self.device, 
@@ -25,7 +27,6 @@ class PromptSAM(object):
                                                label_prompts)
         self.paste_mask_on_image(image, aggregated_mask)
         
-    
     def annotate_inference(self, inference, area_threshold=0):
         """Returns list of annotation dicts
         Args:
@@ -81,7 +82,7 @@ class PromptSAM(object):
     
     def resize_image(self, image, size):
         """Returns resized image"""
-        return transforms.Compose([transforms.Resize(size), transforms.ToTensor()])(image)
+        return transforms.Compose([transforms.Resize(size), transforms.ToTensor(), lambda x: x[:3]])(image)
     
     def plot_prompt_points_on_image(self, image, points, labels=None, fpath=None):
         """Plots prompt points onto given image and saves"""
@@ -93,7 +94,7 @@ class PromptSAM(object):
         self._scatter_labeled_points(points, labels, ax)
         ax.axis('on')
         if fpath is None:
-            fpath = os.path.join(self.module_dir, "prompts_on_image.png")
+            fpath = os.path.join(self.module_dir, "segmented-images", "prompts_on_image.png")
         fig.savefig(fpath)
         
     def _scatter_labeled_points(self, points, labels, ax, marker_size=375):
@@ -113,23 +114,32 @@ class PromptSAM(object):
         ax.scatter(neg_points[:, 1], neg_points[:, 0], color='red', marker='*', 
                    s=marker_size, edgecolor='white', linewidth=1.25)
         
-    def paste_mask_on_image(self, image, mask, filepath=None):
+    def paste_mask_on_image(self, image, mask, alpha=0.7, fpath=None):
         """Adds masks on given image and saves
         Args:
             image (torch.Tensor): Image that be masked
             mask (torch.Tensor): Mask that be applied to image
-            filepath (str): Path of the image that be saved
+            alpha (float): Alpha value for transparency. Default: 0.7
+            fpath (str): Path of the image to which be saved
         """
         image = torch.cat([image, torch.ones((1, *image.shape[1:]))])
         image_mask = torch.zeros_like(image)
-        image_mask[:,mask] = torch.cat([torch.rand(3), torch.Tensor([0.7])])[:, None]
+        image_mask[:,mask] = torch.cat([torch.rand(3), torch.Tensor([alpha])])[:, None]
         
-        if filepath is None:
-            filepath = os.path.join(self.module_dir, "masked_image.png")
-        Image.alpha_composite(
-            transforms.functional.to_pil_image(image),
-            transforms.functional.to_pil_image(image_mask)
-        ).save(filepath)
+        if fpath is None:
+            fpath = os.path.join(self.module_dir, "segmented-images", "masked_image.png")
+        Image.alpha_composite(transforms.functional.to_pil_image(image),
+                              transforms.functional.to_pil_image(image_mask)).save(fpath)
+
+    def create_dirs(self, root):
+        """Creates directories used in segmentation
+        Args:
+            root (str): Root directory under which sub-directories be created
+        """
+        dir_names = ["segmented-images"]
+        for dir_name in dir_names:
+            os.makedirs(os.path.join(root, dir_name), exist_ok=True)
+
 
 
 
