@@ -4,7 +4,6 @@ from torchvision import transforms
 from ultralytics import YOLO
 from PIL import Image
 from matplotlib import pyplot as plt
-import numpy as np
 
 
 
@@ -20,12 +19,9 @@ class PromptSAM(object):
         image = self.resize_image(self.read_image(os.path.join(self.module_dir, "segmentation-images", image_name)), image_size)
         print(image.shape)
         self.plot_prompt_points_on_image(image, point_prompts, label_prompts)
-        aggregated_mask = self.aggregate_masks(self.annotate_inference(self.model(image[None], 
-                                                                                  device=self.device, 
-                                                                                  retina_masks=True)[0]), 
-                                               point_prompts,
-                                               label_prompts)
-        self.paste_mask_on_image(image, aggregated_mask)
+        annotations = self.annotate_inference(self.model(image[None], device=self.device, retina_masks=True)[0])
+        self.paste_mask_on_image(image, self.aggregate_masks(annotations, point_prompts, label_prompts), save=True)
+        self.paste_multiple_masks_on_image(image, annotations)
         
     def annotate_inference(self, inference, area_threshold=0):
         """Returns list of annotation dicts
@@ -114,22 +110,27 @@ class PromptSAM(object):
         ax.scatter(neg_points[:, 1], neg_points[:, 0], color='red', marker='*', 
                    s=marker_size, edgecolor='white', linewidth=1.25)
         
-    def paste_mask_on_image(self, image, mask, alpha=0.7, fpath=None):
-        """Adds masks on given image and saves
+    def paste_mask_on_image(self, image, mask, alpha=0.6, fpath=None, save=False):
+        """Adds masks on given image and returns 4-channel tensor
         Args:
             image (torch.Tensor): Image that be masked
             mask (torch.Tensor): Mask that be applied to image
-            alpha (float): Alpha value for transparency. Default: 0.7
+            alpha (float): Alpha value for transparency. Default: 0.6
             fpath (str): Path of the image to which be saved
+            save (bool): Option to save the resultant image. Default: False
         """
-        image = torch.cat([image, torch.ones((1, *image.shape[1:]))])
+        if image.shape[0] == 3:
+            image = torch.cat([image, torch.ones((1, *image.shape[1:]))])
         image_mask = torch.zeros_like(image)
         image_mask[:,mask] = torch.cat([torch.rand(3), torch.Tensor([alpha])])[:, None]
+        image = Image.alpha_composite(transforms.functional.to_pil_image(image),
+                                      transforms.functional.to_pil_image(image_mask))
         
-        if fpath is None:
-            fpath = os.path.join(self.module_dir, "segmented-images", "masked_image.png")
-        Image.alpha_composite(transforms.functional.to_pil_image(image),
-                              transforms.functional.to_pil_image(image_mask)).save(fpath)
+        if save:
+            if fpath is None:
+                fpath = os.path.join(self.module_dir, "segmented-images", "masked_image.png")
+            image.save(fpath)
+        return transforms.functional.to_tensor(image)
 
     def create_dirs(self, root):
         """Creates directories used in segmentation
@@ -140,8 +141,15 @@ class PromptSAM(object):
         for dir_name in dir_names:
             os.makedirs(os.path.join(root, dir_name), exist_ok=True)
 
-
-
+    def paste_multiple_masks_on_image(self, image, annotations, fpath=None):
+        """Pastes multiple masks onto given image and saves"""
+        print("Number of masks:", len(annotations))
+        for annotation in sorted(annotations, key=lambda x: x["area"], reverse=True):
+            image = self.paste_mask_on_image(image, annotation["segmentation"])
+        
+        if fpath is None:
+            fpath = os.path.join(self.module_dir, "segmented-images", "multiple_masks_on_image.png")
+        transforms.functional.to_pil_image(image).save(fpath)
 
 
 if __name__ == "__main__":
