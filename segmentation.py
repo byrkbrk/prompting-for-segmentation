@@ -17,8 +17,7 @@ class PromptSAM(object):
 
     def segment(self, image_name, point_prompts, label_prompts, image_size):
         image = self.resize_image(self.read_image(os.path.join(self.module_dir, "segmentation-images", image_name)), image_size)
-        print(image.shape)
-        self.plot_prompt_points_on_image(image, point_prompts, label_prompts)
+        self.plot_point_prompts_on_image(image, point_prompts, label_prompts)
         annotations = self.annotate_inference(self.model(image[None], device=self.device, retina_masks=True)[0])
         self.paste_mask_on_image(image, self.aggregate_masks(annotations, point_prompts, label_prompts), save=True)
         self.paste_multiple_masks_on_image(image, annotations)
@@ -26,7 +25,7 @@ class PromptSAM(object):
     def annotate_inference(self, inference, area_threshold=0):
         """Returns list of annotation dicts
         Args:
-            inference: Ouput of the model
+            inference: Output of the model
             area_threshold (int): Threshold for the segmentation area
         """
         annotations = []
@@ -43,6 +42,7 @@ class PromptSAM(object):
         return annotations
     
     def aggregate_masks(self, annotations, point_prompts, label_prompts):
+        """Aggregates masks based on given prompts"""
         filtered_mask = torch.zeros(annotations[0]["segmentation"].shape)
         for annotation in sorted(annotations, key=lambda x: x["area"], reverse=True):
             for point_prompt, label_prompt in zip(point_prompts, label_prompts):
@@ -80,7 +80,7 @@ class PromptSAM(object):
         """Returns resized image"""
         return transforms.Compose([transforms.Resize(size), transforms.ToTensor(), lambda x: x[:3]])(image)
     
-    def plot_prompt_points_on_image(self, image, points, labels=None, fpath=None):
+    def plot_point_prompts_on_image(self, image, points, labels=None, fpath=None):
         """Plots prompt points onto given image and saves"""
         if labels is None:
             labels = [1]*len(points)
