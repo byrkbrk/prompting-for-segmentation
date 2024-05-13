@@ -43,6 +43,8 @@ class PromptSAM(object):
     
     def aggregate_masks(self, annotations, point_prompts, label_prompts):
         """Aggregates masks based on given prompts"""
+        if label_prompts is None: label_prompts = [1]*len(point_prompts)
+        
         filtered_mask = torch.zeros(annotations[0]["segmentation"].shape)
         for annotation in sorted(annotations, key=lambda x: x["area"], reverse=True):
             for point_prompt, label_prompt in zip(point_prompts, label_prompts):
