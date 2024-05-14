@@ -16,10 +16,11 @@ class PromptSAM(object):
         self.model = self.instantiate_model(self.module_dir, self.checkpoint_name)
         self.create_dirs(self.module_dir)
 
-    def segment(self,point_prompts, label_prompts, image_size):
+    def segment(self, point_prompts, label_prompts, image_size):
+        """Plots prompts and pastes masks onto given image and saves"""
         image = self.resize_image(self.read_image(os.path.join(self.module_dir, "segmentation-images", self.image_name)), image_size)
-        self.plot_point_prompts_on_image(image, point_prompts, label_prompts)
         annotations = self.annotate_inference(self.model(image[None], device=self.device, retina_masks=True)[0])
+        self.plot_point_prompts_on_image(image, point_prompts, label_prompts)
         self.paste_mask_on_image(image, self.aggregate_masks(annotations, point_prompts, label_prompts), save=True)
         self.paste_multiple_masks_on_image(image, annotations)
         
@@ -156,6 +157,15 @@ class PromptSAM(object):
             fpath = os.path.join(self.module_dir, "segmented-images", 
                                  os.path.splitext(self.image_name)[0] + "_multiple_masks_on_image.png")
         transforms.functional.to_pil_image(image).save(fpath)
+
+    def get_mask_via_bbox_prompt(self, annotations, bbox_prompt):
+        masks = torch.cat([annotation["segmentation"][None] for annotation in annotations])
+        intersection = masks[:, bbox_prompt[1]:bbox_prompt[3], bbox_prompt[0]:bbox_prompt[2]].sum(dim=(1, 2))
+        union = (bbox_prompt[0] + bbox_prompt[2])*(bbox_prompt[1] + bbox_prompt[3]) \
+                + masks.sum(dim=(1, 2)) \
+                - intersection
+        iou_idx = torch.argmax(intersection/union)
+        return masks[iou_idx]
 
 
 if __name__ == "__main__":
