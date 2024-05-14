@@ -1,22 +1,23 @@
 import os
 import torch
 from torchvision import transforms
-from ultralytics import YOLO
+from ultralytics import FastSAM
 from PIL import Image
 from matplotlib import pyplot as plt
 
 
 
 class PromptSAM(object):
-    def __init__(self, checkpoint_name="FastSAM.pt", device=None):
+    def __init__(self, image_name, checkpoint_name="FastSAM-x.pt", device=None):
+        self.image_name = image_name
         self.module_dir = os.path.dirname(__file__)
         self.checkpoint_name = checkpoint_name
         self.device = self.initialize_device(device)
         self.model = self.instantiate_model(self.module_dir, self.checkpoint_name)
         self.create_dirs(self.module_dir)
 
-    def segment(self, image_name, point_prompts, label_prompts, image_size):
-        image = self.resize_image(self.read_image(os.path.join(self.module_dir, "segmentation-images", image_name)), image_size)
+    def segment(self,point_prompts, label_prompts, image_size):
+        image = self.resize_image(self.read_image(os.path.join(self.module_dir, "segmentation-images", self.image_name)), image_size)
         self.plot_point_prompts_on_image(image, point_prompts, label_prompts)
         annotations = self.annotate_inference(self.model(image[None], device=self.device, retina_masks=True)[0])
         self.paste_mask_on_image(image, self.aggregate_masks(annotations, point_prompts, label_prompts), save=True)
@@ -44,7 +45,7 @@ class PromptSAM(object):
     def aggregate_masks(self, annotations, point_prompts, label_prompts):
         """Aggregates masks based on given prompts"""
         if label_prompts is None: label_prompts = [1]*len(point_prompts)
-        
+
         filtered_mask = torch.zeros(annotations[0]["segmentation"].shape)
         for annotation in sorted(annotations, key=lambda x: x["area"], reverse=True):
             for point_prompt, label_prompt in zip(point_prompts, label_prompts):
@@ -72,7 +73,7 @@ class PromptSAM(object):
             root (str): Directory where the checkpoint is located
             checkpoint_name (str): Name of the checkpoint of YOLO
         """
-        return YOLO(os.path.join(root, checkpoint_name))
+        return FastSAM(os.path.join(root, checkpoint_name))
     
     def read_image(self, img_path):
         """Returns Image object for given image path"""
@@ -92,7 +93,8 @@ class PromptSAM(object):
         self._scatter_labeled_points(points, labels, ax)
         ax.axis('on')
         if fpath is None:
-            fpath = os.path.join(self.module_dir, "segmented-images", "prompts_on_image.png")
+            fpath = os.path.join(self.module_dir, "segmented-images", 
+                                 os.path.splitext(self.image_name)[0] + "_prompts_on_image.png")
         fig.savefig(fpath)
         
     def _scatter_labeled_points(self, points, labels, ax, marker_size=375):
@@ -130,7 +132,8 @@ class PromptSAM(object):
         
         if save:
             if fpath is None:
-                fpath = os.path.join(self.module_dir, "segmented-images", "masked_image.png")
+                fpath = os.path.join(self.module_dir, "segmented-images", 
+                                     os.path.splitext(self.image_name)[0] + "_masked_image.png")
             image.save(fpath)
         return transforms.functional.to_tensor(image)
 
@@ -150,7 +153,8 @@ class PromptSAM(object):
             image = self.paste_mask_on_image(image, annotation["segmentation"])
         
         if fpath is None:
-            fpath = os.path.join(self.module_dir, "segmented-images", "multiple_masks_on_image.png")
+            fpath = os.path.join(self.module_dir, "segmented-images", 
+                                 os.path.splitext(self.image_name)[0] + "_multiple_masks_on_image.png")
         transforms.functional.to_pil_image(image).save(fpath)
 
 
