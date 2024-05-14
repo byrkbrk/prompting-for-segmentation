@@ -23,4 +23,4 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    PromptSAM().segment(args.image_name, args.point_prompts, args.label_prompts, args.image_size)
+    PromptSAM(args.image_name).segment(args.point_prompts, args.label_prompts, args.image_size)
