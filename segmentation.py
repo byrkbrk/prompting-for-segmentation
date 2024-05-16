@@ -20,8 +20,10 @@ class PromptSAM(object):
         """Plots prompts and pastes masks onto given image and saves"""
         image = self.resize_image(self.read_image(os.path.join(self.module_dir, "segmentation-images", self.image_name)), image_size)
         annotations = self.annotate_inference(self.model(image[None], device=self.device, retina_masks=True)[0])
-        self.plot_point_prompts_on_image(image, point_prompts, label_prompts)
-        self.paste_mask_on_image(image, self.aggregate_masks(annotations, point_prompts, label_prompts), save=True)
+        self.plot_bbox_prompts_on_image(image, point_prompts, label_prompts)
+        self.paste_mask_on_image(image, self.aggregate_bbox_masks(annotations, point_prompts, label_prompts), save=True)
+        #self.plot_point_prompts_on_image(image, point_prompts, label_prompts)
+        #self.paste_mask_on_image(image, self.aggregate_masks(annotations, point_prompts, label_prompts), save=True)
         self.paste_multiple_masks_on_image(image, annotations)
         
     def annotate_inference(self, inference, area_threshold=0):
@@ -95,7 +97,7 @@ class PromptSAM(object):
         ax.axis('on')
         if fpath is None:
             fpath = os.path.join(self.module_dir, "segmented-images", 
-                                 os.path.splitext(self.image_name)[0] + "_prompts_on_image.png")
+                                 os.path.splitext(self.image_name)[0] + "_point_prompts_on_image.png")
         fig.savefig(fpath)
         
     def _scatter_labeled_points(self, points, labels, ax, marker_size=375):
@@ -171,11 +173,43 @@ class PromptSAM(object):
         """Returns all masks in reverse sorted way for given annotations"""
         return [annotation["segmentation"] for annotation in sorted(annotations, key=lambda x: x["area"], reverse=True)]
     
+    def aggregate_bbox_masks(self, annotations, bbox_prompts, label_prompts):
+        """Returns aggregated mask for given bounding box and label prompts"""
+        aggregated_mask = torch.zeros_like(annotations[0]["segmentation"])
+        for bbox_prompt, label_prompt in zip(bbox_prompts, label_prompts):
+            aggregated_mask[self.get_mask_via_bbox_prompt(annotations, bbox_prompt)] = 1 if label_prompt else 0
+        return aggregated_mask == 1
     
+    def plot_bbox_prompts_on_image(self, image, bbox_prompts, label_prompts=None, fpath=None):
+        """Plots bounding box onto image and saves for given image, bbox, and label prompts"""
+        if label_prompts is None:
+            label_prompts = [1]*len(bbox_prompts)
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.imshow(image.permute(1, 2, 0).numpy())
+        for box, label in zip(bbox_prompts, label_prompts):
+            self._plot_box(box, label, ax)
+        ax.axis('on')
+
+        if fpath is None:
+            fpath = os.path.join(self.module_dir, "segmented-images", 
+                                 os.path.splitext(self.image_name)[0] + "_bbox_prompts_on_image.png")
+        fig.savefig(fpath)
+        
+    def _plot_box(self, box, label, ax):
+        """Plots rectangle onto ax object for given bounding box and its label"""
+        ax.add_patch(plt.Rectangle(
+            (box[:2]),
+            box[2] - box[0],
+            box[3] - box[1],
+            edgecolor = "green" if label else "red",
+            facecolor = "none",
+            lw = 2))
 
 
 if __name__ == "__main__":
-    prompt_sam = PromptSAM()
-    point_prompts = [[500, 400], [500, 700], [700, 400]]
-    point_labels = [0 ,0, 1]
-    prompt_sam.segment("dogs.jpg", point_prompts, point_labels)
+
+    prompt_sam = PromptSAM("dogs.jpg")
+    bbox_prompts = [[200, 100, 600, 900], [200, 100, 500, 500]]
+    label_prompts = [1, 0]
+    prompt_sam.segment(bbox_prompts, label_prompts, (1024, 1024))
