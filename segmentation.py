@@ -166,6 +166,12 @@ class PromptSAM(object):
                 - intersection
         iou_idx = torch.argmax(intersection/union)
         return masks[iou_idx]
+    
+    def annotations_to_masks(self, annotations):
+        """Returns all masks in reverse sorted way for given annotations"""
+        return [annotation["segmentation"] for annotation in sorted(annotations, key=lambda x: x["area"], reverse=True)]
+    
+    
 
 
 if __name__ == "__main__":
