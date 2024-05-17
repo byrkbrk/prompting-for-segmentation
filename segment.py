@@ -14,7 +14,7 @@ def parse_arguments():
     """Returns parsed arguments"""
     parser = ArgumentParser(description="Segment given image")
     parser.add_argument("image_name", type=str, default=None, help="Name of the image that be processed")
-    parser.add_argument("point_prompts", nargs="+", type=parse_tuple, help="List of point prompts in the form of (height, width)")
+    parser.add_argument("point_or_bbox_prompts", nargs="+", type=parse_tuple, help="List of point prompts in (height, width) or bbox prompts in (x_min, y_min, x_max, y_max)")
     parser.add_argument("--label_prompts", nargs="+", type=int, default=None, help="List of labels of point prompts")
     parser.add_argument("--image_size", nargs="+", type=int, default=[1024, 1024], help="Size (height, width) to which the image be transformed")
     return parser.parse_args()
@@ -23,4 +23,4 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    PromptSAM(args.image_name).segment(args.point_prompts, args.label_prompts, args.image_size)
+    PromptSAM(args.image_name).segment(args.point_or_bbox_prompts, args.label_prompts, args.image_size)
