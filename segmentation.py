@@ -176,7 +176,9 @@ class PromptSAM(object):
     def aggregate_bbox_masks(self, annotations, bbox_prompts, label_prompts):
         """Returns aggregated mask for given bounding box and label prompts"""
         aggregated_mask = torch.zeros_like(annotations[0]["segmentation"])
-        for bbox_prompt, label_prompt in zip(bbox_prompts, label_prompts):
+        for bbox_prompt, label_prompt in sorted(zip(bbox_prompts, label_prompts), 
+                                                key=lambda x: (x[0][3] - x[0][1])*(x[0][2] - x[0][0]), 
+                                                reverse=True):
             aggregated_mask[self.get_mask_via_bbox_prompt(annotations, bbox_prompt)] = 1 if label_prompt else 0
         return aggregated_mask == 1
     
@@ -210,6 +212,6 @@ class PromptSAM(object):
 if __name__ == "__main__":
 
     prompt_sam = PromptSAM("dogs.jpg")
-    bbox_prompts = [[200, 100, 600, 900], [200, 100, 500, 500]]
-    label_prompts = [1, 0]
+    bbox_prompts = [[250, 150, 500, 500], [200, 100, 600, 900]]
+    label_prompts = [0, 1]
     prompt_sam.segment(bbox_prompts, label_prompts, (1024, 1024))
