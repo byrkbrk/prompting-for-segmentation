@@ -26,16 +26,16 @@ class PromptSAM(object):
                                      self.aggregate_masks(annotations, point_or_bbox_prompts, label_prompts), 
                                      save=True,
                                      fpath=os.path.join(self.module_dir, 
-                                                            "segmented-images", 
-                                                            os.path.splitext(self.image_name)[0] + "_masked_image_via_points.png"))
+                                                        "segmented-images", 
+                                                        os.path.splitext(self.image_name)[0] + "_masked_image_via_points.png"))
         elif len(point_or_bbox_prompts[0]) == 4:
             self.plot_bbox_prompts_on_image(image, point_or_bbox_prompts, label_prompts)
             self.paste_mask_on_image(image, 
                                      self.aggregate_bbox_masks(annotations, point_or_bbox_prompts, label_prompts), 
                                      save=True,
                                      fpath=os.path.join(self.module_dir, 
-                                                            "segmented-images", 
-                                                            os.path.splitext(self.image_name)[0] + "_masked_image_via_bboxes.png"))
+                                                        "segmented-images", 
+                                                        os.path.splitext(self.image_name)[0] + "_masked_image_via_bboxes.png"))
         else:
             raise ValueError("Unexpected number of items provided for point_or_bbox_prompt")
         self.paste_multiple_masks_on_image(image, annotations)
@@ -175,6 +175,7 @@ class PromptSAM(object):
         transforms.functional.to_pil_image(image).save(fpath)
 
     def get_mask_via_bbox_prompt(self, annotations, bbox_prompt):
+        """Returns the mask with the highest iou score"""
         masks = torch.cat([annotation["segmentation"][None] for annotation in annotations])
         intersection = masks[:, bbox_prompt[1]:bbox_prompt[3], bbox_prompt[0]:bbox_prompt[2]].sum(dim=(1, 2))
         union = (bbox_prompt[2] - bbox_prompt[0])*(bbox_prompt[3] - bbox_prompt[1]) \
