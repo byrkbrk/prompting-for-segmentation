@@ -109,6 +109,7 @@ class PromptSAM(object):
         ax.imshow(image.permute(1, 2, 0).numpy())
         self._scatter_labeled_points(points, labels, ax)
         ax.axis('on')
+        fig.tight_layout()
         if fpath is None:
             fpath = os.path.join(self.module_dir, "segmented-images", 
                                  os.path.splitext(self.image_name)[0] + "_point_prompts_on_image.png")
@@ -208,6 +209,7 @@ class PromptSAM(object):
         for box, label in zip(bbox_prompts, label_prompts):
             self._plot_box(box, label, ax)
         ax.axis('on')
+        fig.tight_layout()
 
         if fpath is None:
             fpath = os.path.join(self.module_dir, "segmented-images", 
