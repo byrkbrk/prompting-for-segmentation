@@ -1,0 +1,12 @@
+name: prompting-for-sam
+
+channels:
+  - pytorch
+  - defaults
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - pytorch
+  - ultralytics
+  - torchvision
