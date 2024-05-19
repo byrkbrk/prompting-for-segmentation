@@ -2,6 +2,7 @@
 
 ## Introduction
 
+We implement a module for segmenting images using (points and bounding box) prompts, in PyTorch. As a model, we use pretrained [FastSAM](https://arxiv.org/abs/2306.12156) provided by [ultralytics](https://docs.ultralytics.com/models/fast-sam/). 
 
 ## Prompts
 
