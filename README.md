@@ -17,15 +17,15 @@ We implement a module for segmenting images using (points and bounding box) prom
     ~~~
 4. For macos, run:
     ~~~
-    conda env create -f diffusion-env_macos.yaml
+    conda env create -f prompting-for-sam_macos.yaml
     ~~~
     For linux or windows, run:
     ~~~
-    conda env create -f diffusion-env_linux.yaml
+    conda env create -f prompting-for-sam_linux.yaml
     ~~~
 5. Activate the environment:
     ~~~
-    conda activate diffusion-env
+    conda activate prompting-for-sam
     ~~~
 
 ## Prompts
