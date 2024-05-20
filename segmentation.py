@@ -43,7 +43,7 @@ class PromptSAM(object):
     def annotate_inference(self, inference, area_threshold=0):
         """Returns list of annotation dicts
         Args:
-            inference: Output of the model
+            inference (ultralytics.engine.results.Results): Output of the model
             area_threshold (int): Threshold for the segmentation area
         """
         annotations = []
@@ -120,7 +120,7 @@ class PromptSAM(object):
         Args:
             points (list): List of 2D points in h, w form
             labels (list): List of labels
-            ax: Axes object of pyplot
+            ax (matplotlib.axes._axes.Axes): Axes object of pyplot
             marker_size (int): Size of the marker
         """
         points = torch.tensor(points)
