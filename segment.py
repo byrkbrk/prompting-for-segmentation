@@ -15,7 +15,7 @@ def parse_arguments():
     parser = ArgumentParser(description="Segment given image")
     parser.add_argument("image_name", type=str, default=None, help="Name of the image that be processed")
     parser.add_argument("point_or_bbox_prompts", nargs="+", type=parse_tuple, help="List of point prompts in (height, width) or bbox prompts in (x_min, y_min, x_max, y_max)")
-    parser.add_argument("--label_prompts", nargs="+", type=int, default=None, help="List of labels of point prompts")
+    parser.add_argument("--label_prompts", nargs="+", type=int, default=None, help="List of labels of prompts. Use the values 0 and 1 for negative and positive prompts, respectively")
     parser.add_argument("--image_size", nargs="+", type=int, default=[1024, 1024], help="Size (height, width) to which the image be transformed")
     parser.add_argument("--checkpoint_name", type=str, default="FastSAM-x.pt", choices=["FastSAM-x.pt", "FastSAM-s.pt"], help="Name of the pretrained model for FastSAM")
     parser.add_argument("--device", type=str, default=None, help="Name of the device on which the model be run")
