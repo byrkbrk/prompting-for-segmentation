@@ -49,7 +49,7 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   --label_prompts LABEL_PROMPTS [LABEL_PROMPTS ...]
-                        List of labels of point prompts
+                        List of labels of prompts. Use the values 0 and 1 for negative and positive prompts, respectively
   --image_size IMAGE_SIZE [IMAGE_SIZE ...]
                         Size (height, width) to which the image be transformed
   --checkpoint_name {FastSAM-x.pt,FastSAM-s.pt}
